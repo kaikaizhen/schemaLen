@@ -1,37 +1,99 @@
+<div align="center">
+
 # SchemaLens / DBSchema
 
-VS Code 的 Database Schema Visualization Extension。
+**VS Code 的資料庫 Schema 視覺化擴充套件**
 
-> Mermaid-like Schema DSL + drawDB-like Interactive Visualizer + Large Schema Exploration
+*Mermaid-like Schema DSL + drawDB-like Interactive Visualizer + Large Schema Exploration*
 
-在 VS Code 裡寫 `.dbschema`，即時驗證，開 Preview 直接看到完整的 Table / Column / Type /
-欄位級 Relation；就算有 100 張表，也能快速找到某張表並理解它的欄位與關聯。
+![VS Code](https://img.shields.io/badge/VS_Code-Extension-007ACC?style=flat-square&logo=visualstudiocode&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![esbuild](https://img.shields.io/badge/esbuild-bundled-FFCF00?style=flat-square&logo=esbuild&logoColor=black)
+![Vitest](https://img.shields.io/badge/Vitest-429_tests-6E9F18?style=flat-square&logo=vitest&logoColor=white)
+![Claude Code](https://img.shields.io/badge/Claude_Code-Plugin-D97757?style=flat-square&logo=anthropic&logoColor=white)
+![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)
 
-## 能做什麼
-
-- **完整的資料表卡片** — 預設就顯示欄位、型別、PK / FK / UQ / IDX、nullable、預設值與備註，不必再點開細節面板
-- **欄位級關聯線** — 線直接連到實際的欄位列，不是只連到表格外框
-- **大型 Schema 探索** — 搜尋 Table / Column、1-Hop / 2-Hop、Upstream / Downstream、淡化或隱藏無關的表
-- **欄位聚焦** — 點一個欄位，只亮起它與透過 FK 對應的欄位
-- **群組分類** — 依功能模組把資料表框在一起，可依群組或依關聯兩種方式排版
-- **回跳原始碼** — 雙擊表或欄位跳回 DSL 定義；DSL 錯誤直接顯示在 Problems Panel
-- **JSON 匯入 / 匯出** — DSL ⇄ JSON 語意一致的 round trip
-- **中文 / 英文介面**
+</div>
 
 ---
 
-## 安裝
+## 📖 簡介
+
+在 VS Code 裡寫 `.dbschema`，即時驗證，開 Preview 直接看到完整的 Table / Column / Type / 欄位級 Relation；就算有 100 張表，也能快速找到某張表並理解它的欄位與關聯。這個 repo 同時是 Claude Code 與 Codex 的 Plugin Marketplace，讓 AI 代理幫你寫 schema、安裝擴充套件並打開 Preview。
+
+> 💡 核心套件後續已移到 [schemalens-web](https://github.com/doraeyi/schemalens-web) monorepo 繼續維護（含網頁版）。
+
+## ✨ 功能特色
+
+- 🗃️ **完整的資料表卡片** — 預設就顯示欄位、型別、PK / FK / UQ / IDX、nullable、預設值與備註
+- 🔗 **欄位級關聯線** — 線直接連到實際的欄位列，不是只連到表格外框
+- 🔭 **大型 Schema 探索** — 搜尋 Table / Column、1-Hop / 2-Hop、Upstream / Downstream、淡化或隱藏無關的表
+- 🎯 **欄位聚焦** — 點一個欄位，只亮起它與透過 FK 對應的欄位
+- 🗂️ **群組分類** — 依功能模組把資料表框在一起，可依群組或依關聯兩種方式排版
+- ↩️ **回跳原始碼** — 雙擊表或欄位跳回 DSL 定義；DSL 錯誤直接顯示在 Problems Panel
+- 🔄 **JSON 匯入 / 匯出** — DSL ⇄ JSON 語意一致的 round trip
+- 🌐 **中文 / 英文介面**
+
+## 🏗️ 系統架構
+
+```mermaid
+flowchart TD
+    DSL[".dbschema 檔案"] --> Ext["apps/vscode-extension<br/>Commands・Diagnostics・Preview Panel"]
+    Ext --> Parser["schema-parser<br/>Lexer / Parser / AST"]
+    Parser --> Core["schema-core<br/>Domain Model・Validator"]
+    Core --> Graph["schema-graph<br/>Traversal・Search"]
+    Core --> Layout["schema-layout<br/>Layered layout・Edge routing"]
+    Graph --> Renderer["schema-renderer<br/>Table Card・Focus/Dim・Zoom/Pan"]
+    Layout --> Renderer
+    Renderer --> Webview["VS Code Webview<br/>Preview"]
+    Core <--> Serializer["schema-serializer<br/>JSON ⇄ Schema ⇄ DSL"]
+```
+
+依賴方向單向向下。`schema-core` 不依賴 VS Code、Webview、Layout 或 Renderer；Graph Traversal 獨立於 Renderer；Layout Engine 可整顆替換。
+
+## 🧰 技術棧
+
+| 類別 | 技術 |
+| --- | --- |
+| 擴充套件 | VS Code Extension API、Webview、Language / Diagnostics |
+| 語言 | TypeScript（npm workspaces monorepo） |
+| 打包 | esbuild、@vscode/vsce |
+| 測試 | Vitest + jsdom（單元 / DOM / round-trip） |
+| AI 整合 | Claude Code Plugin Marketplace、Codex Plugin Marketplace、Agent Skill |
+| 發佈 | GitHub Releases（VSIX） |
+
+## 📂 專案結構
+
+```text
+apps/vscode-extension      Commands、Diagnostics、Preview Panel、Language
+packages/schema-core       Domain Model、Validator、Error Model（不依賴 VS Code）
+packages/schema-parser     Lexer / Parser / AST → Schema、Markdown 區塊
+packages/schema-graph      Traversal（1/2-Hop、Upstream/Downstream）、Search
+packages/schema-layout     LayoutEngine 介面 + layered layout + 欄位級 edge routing
+packages/schema-renderer   Table Card、Relation Edge、Focus/Dim/Hide、Zoom/Pan
+packages/schema-serializer JSON ⇄ Schema ⇄ DSL
+packages/schema-fixtures   合成 Schema（Spike 與壓測用）
+
+.claude-plugin/            Claude Code Plugin Marketplace 定義
+.agents/plugins/           Codex Plugin Marketplace 定義
+plugins/                   外掛本體
+  └ skills/                Agent Skill（Claude 與 Codex 共用同一份）
+```
+
+外掛只是薄薄的封裝：兩個生態系各有自己的 marketplace 與 plugin manifest，但**技能本體只有一份**，放在 `plugins/schemalens-vscode-extension/skills/`。
+
+## 📦 安裝
 
 擴充套件從本 repository 的 [GitHub Releases](https://github.com/kaikaizhen/schemaLen/releases/latest)
 發布，**不經過 Visual Studio Marketplace 與 Open VSX**。三種安裝方式：
 
 | 方式 | 適合 |
 |---|---|
-| [用 Claude Code 安裝](#用-claude-code-安裝) | 讓 Claude 代為下載、安裝與驗證 |
-| [用 Codex 安裝](#用-codex-安裝) | 在 Codex CLI 裡完成同一件事 |
-| [直接安裝 VSIX](#直接安裝-vsix) | 不透過任何 agent，自己下載 |
+| [用 Claude Code 安裝](#-用-claude-code-安裝) | 讓 Claude 代為下載、安裝與驗證 |
+| [用 Codex 安裝](#-用-codex-安裝) | 在 Codex CLI 裡完成同一件事 |
+| [直接安裝 VSIX](#-直接安裝-vsix) | 不透過任何 agent，自己下載 |
 
-## 用 Claude Code 安裝
+## 🤖 用 Claude Code 安裝
 
 本 repository 同時是一個 Claude Code Plugin Marketplace。在 Claude Code 裡加入一次：
 
@@ -93,7 +155,7 @@ code --uninstall-extension kaikaizhen.dbschema
 
 外掛**不寫死** `.vsix` 版本：預設安裝最新的 stable release，因此發布新的擴充套件版本時不需要動外掛。
 
-## 用 Codex 安裝
+## 🤖 用 Codex 安裝
 
 This repository is a Codex plugin marketplace source. In Codex CLI, import it once:
 
@@ -107,7 +169,7 @@ Codex 讀的是**同一份技能**（`plugins/schemalens-vscode-extension/skills
 
 Codex plugins work in Codex CLI and the ChatGPT desktop app, but not in the Codex IDE extension. A repository marketplace must be imported first; it is not automatically listed in the universal public plugin directory.
 
-## 直接安裝 VSIX
+## 💾 直接安裝 VSIX
 
 從 [GitHub Releases](https://github.com/kaikaizhen/schemaLen/releases/latest) 下載
 `dbschema-<version>.vsix`，然後任選一種：
@@ -128,7 +190,7 @@ code --install-extension dbschema-<version>.vsix
 
 ---
 
-## 從原始碼建置
+## 🔨 從原始碼建置
 
 ```bash
 npm install
@@ -147,7 +209,7 @@ npm run package:vsix     # 產出 dist/dbschema-<version>.vsix
 | [examples/design.schema.md](examples/design.schema.md) | Markdown 內嵌，跨多個區塊組成一份 Schema |
 | [examples/large-schema.schema.md](examples/large-schema.schema.md) | 150 張表、191 條關聯，用來驗證大型 Schema 的探索體驗（AC-20）。由 `npm run example:large` 產生 |
 
-## DSL
+## ✍️ DSL
 
 ```text
 group Identity "使用者與身分"
@@ -173,7 +235,7 @@ relation FK_Posts_Users {
 
 完整語法見 [docs/dsl-spec.md](docs/dsl-spec.md)。
 
-## 支援的輸入
+## 📥 支援的輸入
 
 | 檔案 | 說明 |
 |---|---|
@@ -181,7 +243,7 @@ relation FK_Posts_Users {
 | `*.schema.md` | Markdown 內的 ` ```dbschema ` 區塊，可跨多個區塊組成一份 Schema |
 | `*.schema.json` | JSON Import；`DBSchema: Export JSON` 的輸出格式 |
 
-## 命令
+## ⌨️ 命令
 
 | 命令 | 說明 |
 |---|---|
@@ -191,7 +253,7 @@ relation FK_Posts_Users {
 | `DBSchema: Fit View` / `Reset Focus` | 視圖控制 |
 | `DBSchema: Open Spike Preview` | 用 20 / 50 / 100 / 200 張合成表壓測 Viewer |
 
-## Preview 操作
+## 🖱️ Preview 操作
 
 | 操作 | 行為 |
 |---|---|
@@ -225,31 +287,7 @@ Toolbar：
 關聯線預設畫在卡片**之下**（線太多會蓋住欄位內容），聚焦後才浮到卡片之上——
 此時無關的線已經被淡化，剩下的正是要看的。
 
-## 架構
-
-```
-apps/vscode-extension     Commands、Diagnostics、Preview Panel、Language
-packages/schema-core      Domain Model、Validator、Error Model（不依賴 VS Code）
-packages/schema-parser    Lexer / Parser / AST → Schema、Markdown 區塊
-packages/schema-graph     Traversal（1/2-Hop、Upstream/Downstream）、Search
-packages/schema-layout    LayoutEngine 介面 + layered layout + 欄位級 edge routing
-packages/schema-renderer  Table Card、Relation Edge、Focus/Dim/Hide、Zoom/Pan
-packages/schema-serializer JSON ⇄ Schema ⇄ DSL
-packages/schema-fixtures  合成 Schema（Spike 與壓測用）
-
-.claude-plugin/           Claude Code Plugin Marketplace 定義
-.agents/plugins/          Codex Plugin Marketplace 定義
-plugins/                  外掛本體
-  └ skills/               Agent Skill（Claude 與 Codex 共用同一份）
-```
-
-外掛只是薄薄的封裝：兩個生態系各有自己的 marketplace 與 plugin manifest，
-但**技能本體只有一份**，放在 `plugins/schemalens-vscode-extension/skills/`。
-
-依賴方向單向向下。`schema-core` 不依賴 VS Code、Webview、Layout 或 Renderer；
-Graph Traversal 獨立於 Renderer；Layout Engine 可整顆替換。
-
-## 開發
+## 🛠️ 開發
 
 ```bash
 npm test          # 429 個單元 / DOM / round-trip 測試
@@ -261,14 +299,14 @@ npm run watch -w dbschema
 
 DSL 規格見 [docs/dsl-spec.md](docs/dsl-spec.md)，發布流程見 [RELEASE.md](RELEASE.md)。
 
-## Git Flow
+## 🌿 Git Flow
 
 `main` ← `develop` ← `feature/*`。一個功能一個分支，完成即合併回 `develop`。
 Release 由 `main` 打 `v*` tag 觸發，詳見 [RELEASE.md](RELEASE.md)。
 
 送 PR 請以 `develop` 為目標分支，並確認 `npm test` 與 `npm run typecheck` 都通過。
 
-## License
+## 📄 License
 
 [Apache License 2.0](LICENSE)。可自由使用、修改與再散布（含商業用途），
 散布時請保留授權與 [NOTICE](NOTICE) 的標示。
